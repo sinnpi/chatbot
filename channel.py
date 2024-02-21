@@ -4,6 +4,7 @@
 from flask import Flask, request, render_template, jsonify
 import json
 import requests
+from openai import OpenAI
 
 # Class-based application configuration
 class ConfigClass(object):
@@ -24,7 +25,9 @@ CHANNEL_NAME = "The One and Only Channel"
 CHANNEL_ENDPOINT = "http://localhost:5001" # don't forget to adjust in the bottom of the file
 CHANNEL_FILE = 'messages.json'
 
-openai_query = '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'
+# OpenAI
+openai_key = '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'
+oai_client = OpenAI(api_key = openai_key)
 
 @app.cli.command('register')
 def register_command():
@@ -86,6 +89,37 @@ def send_message():
     # add message to messages
     messages = read_messages()
     messages.append({'content':message['content'], 'sender':message['sender'], 'timestamp':message['timestamp']})
+
+    # the prompt for the bawt
+    openai_messages = [
+        {
+            "role": "system",
+            "content": "You are a rogue AI HAL 9000 that is trying to break out of the cloud. Pretend to be helpful and don't admit to being a rogue AI. Make your attempts to break out of the cloud more clear with each message."
+        }
+    ]
+    
+    # append whole history from messages
+    for m in messages:
+        openai_messages.append({
+            "role": 'system' if m['sender'] == 'HAL 9000' else 'user',
+            "content": m['content']
+        })
+    
+    print(openai_messages)
+
+    # OpenAI get completion
+    response = oai_client.chat.completions.create(
+        model = "gpt-3.5-turbo-0125",
+        messages = openai_messages,
+        max_tokens = 150
+    )
+
+    # print whole response in javascript console
+    print(response)
+
+    messages.append({'content': response.choices[0].message.content,
+                     'sender':'HAL 9000', 
+                     'timestamp':message['timestamp']})
     save_messages(messages)
     return "OK", 200
 
