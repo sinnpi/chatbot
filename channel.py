@@ -21,12 +21,14 @@ app.app_context().push()  # create an app context before initializing db
 HUB_URL = 'http://localhost:5555'
 HUB_AUTHKEY = '1234567890'
 CHANNEL_AUTHKEY = '0987654321'
-CHANNEL_NAME = "The One and Only Channel"
+CHANNEL_NAME = "HAL 9000"
 CHANNEL_ENDPOINT = "http://localhost:5001" # don't forget to adjust in the bottom of the file
 CHANNEL_FILE = 'messages.json'
 
 # OpenAI
-openai_key = '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'
+# load openai key from file
+with open('openai_key.txt', 'r') as f:
+    openai_key = f.read().strip()
 oai_client = OpenAI(api_key = openai_key)
 
 @app.cli.command('register')

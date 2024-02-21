@@ -3,27 +3,191 @@
 <head>
     <meta charset="UTF-8">
     <title>Channel {{ channel.name }}</title>
+    <style>
+        :root {
+            --text-color: #333;
+            --background-color: #f0f0f0;
+            --message-background-color: #fff;
+            --message-border-color: #ddd;
+            --input-background-color: #fff;
+            --input-border-color: #ddd;
+            --button-background-color: #007BFF;
+            --button-hover-background-color: #0056b3;
+            --sender-color: #333;
+            --content-color: #666;
+        }
+
+        body.dark {
+            --text-color: #ddd;
+            --background-color: #333;
+            --message-background-color: #444;
+            --message-border-color: #555;
+            --input-background-color: #555;
+            --input-border-color: #666;
+            --button-background-color: #007BFF;
+            --button-hover-background-color: #0056b3;
+            --sender-color: #ddd;
+            --content-color: #bbb;
+        }
+
+        html, body {
+            font-family: Arial, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            height: 100%;
+            margin: 0;
+        }
+        .content-container {
+            display: flex;
+            flex-flow: column;
+            height: 95%;
+        }
+        .messages-container {
+            flex-shrink: 10;
+            height: 100%;
+            overflow: auto;
+        }
+        .message {
+            background-color: var(--message-background-color);
+            border: 1px solid var(--message-border-color);
+            margin: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .sender {
+            font-weight: bold;
+            color: var(--sender-color)
+        }
+        .content {
+            margin-top: 5px;
+            color: var(--content-color)
+        }
+        .title {
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        .channels {
+            font-size: 16px;
+            color: #007BFF;
+        }
+        .chatbar {
+            margin-top: auto;
+            background-color: var(--input-background-color);
+            padding: 10px;
+            border-top: 1px solid var(--input-border-color);
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: var(--background-color);
+            padding: 10px;
+            border-top: 1px solid var(--input-border-color);
+            text-align: center;
+            font-size: 12px;
+        }
+        .timestamp {
+            font-size: 80%;
+            color: var(--content-color);
+            padding-left: 5px;
+        }
+        form {
+            display: flex;
+            justify-content: center;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            margin-right: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        input[type="submit"] {
+            padding: 10px 10px;
+            border: none;
+            background-color: #007BFF;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        #modeSwitcher {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 10px 20px;
+            border: none;
+            background-color: #007BFF;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 5000;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
 </head>
-<body>
-<p>The distributed messenger. <a href="{{ url_for('home_page') }}">List of channels.</a> </p>
-{% if channel %}
-    <h1>Channel {{ channel.name }}</h1>
+<body class="dark">
+<button id="modeSwitcher" title="Switch to Light Mode">☀️</button>
+<div class="content-container">
+                <div class="title">Channel {{ channel.name }} <a href="{{ url_for('home_page') }}" class="channels">[ LIST OF CHANNELS ]</a></div>
+    <div class="messages-container">
+        <div class="scroll">
+            {% if channel %}
 
-        {% for message in messages %}
-            <h2>{{ message.sender }}</h2>
-            <p>{{ message.content }}</p>
-            <p style="font-size: 60%">{{ message.timestamp }}</p>
-        {% endfor %}
-{% else %}
-    <h1>Channel not found</h1>
-{% endif %}
+                {% for message in messages %}
+                    <div class="message">
+                        <div class="sender">{{ message.sender }} <span class="timestamp" data-timestamp="{{ message.timestamp }}"></span></div>
+                        <div class="content">{{ message.content }}</div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <h1>Channel not found</h1>
+            {% endif %}
+        </div>
+    </div>
+    <div class="chatbar">
+        <form action="post" method="post">
+            <input type="hidden" name="channel" value="{{ channel.endpoint | urlencode }}">
+            <!-- Sender: --> <input type="hidden" name="sender" id="sender", value="User">
+            <input type="text" name="content" id="content">
+            <input type="submit" value="Post">
+        </form>
+    </div>
+</div>
+<div class="footer">
+    <p>© 2021 Chat App</p>
+</div>
 
-<form action="post" method="post">
-    <input type="hidden" name="channel" value="{{ channel.endpoint | urlencode }}">
-    Sender: <input type="text" name="sender" id="sender", value="User"> <br>
-    Message: <input type="text" name="content" id="content"> <br>
-    <input type="submit" value="Post">
-</form>
+<script>
+    const modeSwitcher = document.getElementById('modeSwitcher');
+    modeSwitcher.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        if (document.body.classList.contains('dark')) {
+            modeSwitcher.textContent = '☀️';
+            modeSwitcher.title = 'Switch to Light Mode';
+        } else {
+            modeSwitcher.textContent = '🌙';
+            modeSwitcher.title = 'Switch to Dark Mode';
+        }
+    });
+    window.onload = function() {
+        const timestamps = document.querySelectorAll('.timestamp');
+        timestamps.forEach(timestamp => {
+            const originalTimestamp = timestamp.getAttribute('data-timestamp');
+            const timeAgo = moment(originalTimestamp).fromNow();
+            timestamp.textContent = '(' + timeAgo + ')';
+            timestamp.title = originalTimestamp;
+        });
 
+        const scrollDiv = document.querySelector('.messages-container');
+        scrollDiv.scrollTop = scrollDiv.scrollHeight;
+    };
+</script>
 </body>
 </html>
