@@ -1,10 +1,11 @@
-## channel.py - a simple message channel
-##
-
 from flask import Flask, request, render_template, jsonify
 import json
 import requests
+import os
 from openai import OpenAI
+import logging
+logging.basicConfig(filename='client.log', level=logging.INFO)
+logging.info('This message should go to the log file')
 
 # Class-based application configuration
 class ConfigClass(object):
@@ -18,18 +19,35 @@ app = Flask(__name__)
 app.config.from_object(__name__ + '.ConfigClass')  # configuration
 app.app_context().push()  # create an app context before initializing db
 
-HUB_URL = 'http://localhost:5555'
-HUB_AUTHKEY = '1234567890'
+DEV = False 
+
+if DEV:
+    HUB_URL = 'http://localhost:5555'
+    HUB_AUTHKEY = '1234567890'
+else:
+    HUB_URL = 'https://temporary-server.de'
+    HUB_AUTHKEY = 'Crr-K3d-2N'
+
 CHANNEL_AUTHKEY = '0987654321'
 CHANNEL_NAME = "HAL 9000"
-CHANNEL_ENDPOINT = "http://localhost:5001" # don't forget to adjust in the bottom of the file
+if DEV:
+    CHANNEL_ENDPOINT = "http://localhost:5001" # don't forget to adjust in the bottom of the file
+else:
+    CHANNEL_ENDPOINT = "http://vm520.rz.uni-osnabrueck.de/user009/channel.wsgi"
+# check if messages.json exists, else create it
+if not os.path.exists('messages.json'):
+    with open('messages.json', 'w') as f:
+        f.write('')
 CHANNEL_FILE = 'messages.json'
 
 # OpenAI
 # load openai key from file
 with open('openai_key.txt', 'r') as f:
     openai_key = f.read().strip()
+
+logging.info('### loading openai client ...')
 oai_client = OpenAI(api_key = openai_key)
+logging.info('### openai client loaded')
 
 @app.cli.command('register')
 def register_command():
@@ -41,9 +59,9 @@ def register_command():
             "name": CHANNEL_NAME,
             "endpoint": CHANNEL_ENDPOINT,
             "authkey": CHANNEL_AUTHKEY}))
-
     if response.status_code != 200:
-        print("Error creating channel: "+str(response.status_code))
+        response_text = response.text
+        print("Error creating channel: "+str(response.status_code)+" :\n"+response_text)
         return
 
 def check_authorization(request):
@@ -66,6 +84,7 @@ def health_check():
 # GET: Return list of messages
 @app.route('/', methods=['GET'])
 def home_page():
+    logging.info('### home_page - get messages')
     if not check_authorization(request):
         return "Invalid authorization", 400
     # fetch channels from server
@@ -74,10 +93,13 @@ def home_page():
 # POST: Send a message
 @app.route('/', methods=['POST'])
 def send_message():
+    logging.info('### send_message')
     # fetch channels from server
     # check authorization header
     if not check_authorization(request):
         return "Invalid authorization", 400
+    logging.info('### check_authorization(request) OK')
+
     # check if message is present
     message = request.json
     if not message:
@@ -107,17 +129,29 @@ def send_message():
             "content": m['content']
         })
     
-    print(openai_messages)
+    logging.info('### openai_messages:')
+    logging.info('-'*40)
+    logging.info('-'*40)
+    logging.info(openai_messages)
+    logging.info('-'*40)
+    logging.info('-'*40)
 
+
+    # logging.info('######## TESTING openai_client connection')
+    
+    # logging.info('### openai_client connected')
+
+    logging.info('### openai_client.chat.completions.create')
     # OpenAI get completion
     response = oai_client.chat.completions.create(
         model = "gpt-3.5-turbo-0125",
         messages = openai_messages,
-        max_tokens = 150
+        max_tokens = 1500
     )
 
     # print whole response in javascript console
-    print(response)
+    logging.info('### response from openai :')
+    logging(response)
 
     messages.append({'content': response.choices[0].message.content,
                      'sender':'HAL 9000', 
@@ -126,6 +160,7 @@ def send_message():
     return "OK", 200
 
 def read_messages():
+    logging.info('### read_messages')
     global CHANNEL_FILE
     try:
         f = open(CHANNEL_FILE, 'r')
@@ -139,6 +174,7 @@ def read_messages():
     return messages
 
 def save_messages(messages):
+    logging.info('### save_messages')
     global CHANNEL_FILE
     with open(CHANNEL_FILE, 'w') as f:
         json.dump(messages, f)

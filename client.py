@@ -3,24 +3,38 @@ import requests
 import urllib.parse
 import datetime
 
+# initialize a loggoer to log to a file
+import logging
+logging.basicConfig(filename='client.log', level=logging.INFO)
+logging.info('This message should go to the log file')
+
 app = Flask(__name__)
 
-HUB_AUTHKEY = '1234567890'
-HUB_URL = 'http://localhost:5555'
+DEV = False
 
-#HUB_AUTHKEY = 'Crr-K3d-2N'
-#HUB_URL = 'https://temporary-server.de'
+if DEV:
+    HUB_AUTHKEY = '1234567890'
+    HUB_URL = 'http://localhost:5555'
+
+else:
+
+    HUB_AUTHKEY = 'Crr-K3d-2N'
+    HUB_URL = 'https://temporary-server.de'
 
 CHANNELS = None
 LAST_CHANNEL_UPDATE = None
 
 
 def update_channels():
+    print("#### update_channels")
     global CHANNELS, LAST_CHANNEL_UPDATE
     if CHANNELS and LAST_CHANNEL_UPDATE and (datetime.datetime.now() - LAST_CHANNEL_UPDATE).seconds < 60:
         return CHANNELS
     # fetch list of channels from server
+    print("#### update_channels: fetching")
+    print(HUB_URL + '/channels')
     response = requests.get(HUB_URL + '/channels', headers={'Authorization': 'authkey ' + HUB_AUTHKEY})
+    print('#### response:', response)
     if response.status_code != 200:
         return "Error fetching channels: "+str(response.text), 400
     channels_response = response.json()
@@ -60,6 +74,7 @@ def show_channel():
 @app.route('/post', methods=['POST'])
 def post_message():
     # send message to channel
+    logging.info('#### post_message')
     post_channel = request.form['channel']
     if not post_channel:
         return "No channel specified", 400
@@ -76,6 +91,10 @@ def post_message():
     response = requests.post(channel['endpoint'],
                              headers={'Authorization': 'authkey ' + channel['authkey']},
                              json={'content': message_content, 'sender': message_sender, 'timestamp': message_timestamp})
+
+    logging.info('#### response: '+str(response))
+    logging.info('#### response.text: '+str(response.text))
+
     if response.status_code != 200:
         return "Error posting message: "+str(response.text), 400
     return redirect(url_for('show_channel')+'?channel='+urllib.parse.quote(post_channel))
