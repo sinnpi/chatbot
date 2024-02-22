@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Channel {{ channel.name }}</title>
     <style>
+
         :root {
             --text-color: #333;
             --background-color: #f0f0f0;
@@ -34,19 +35,23 @@
             font-family: Arial, sans-serif;
             background-color: var(--background-color);
             color: var(--text-color);
-            height: 100%;
             margin: 0;
+            padding: 0;
+            height: 100%;
         }
+
         .content-container {
             display: flex;
-            flex-flow: column;
-            height: 95%;
+            flex-direction: column;
+            padding-bottom: 60px; /* Increased padding to make space for the footer */
+            height: calc(100vh - 60px); /* Adjust height to prevent overflow into footer */
         }
+
         .messages-container {
-            flex-shrink: 10;
-            height: 100%;
             overflow: auto;
+            flex-grow: 1;
         }
+
         .message {
             background-color: var(--message-background-color);
             border: 1px solid var(--message-border-color);
@@ -54,6 +59,30 @@
             border-radius: 5px;
             margin: 10px 20%;
         }
+
+        .chatbar {
+            background-color: var(--input-background-color);
+            padding: 10px;
+            border-top: 1px solid var(--input-border-color);
+            margin-bottom: 30px;;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--background-color);
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            border-top: 1px solid var(--input-border-color);
+        }
+
+
+
+/* ------- */
+        
         .sender {
             font-weight: bold;
             color: var(--sender-color)
@@ -72,25 +101,10 @@
             font-size: 16px;
             color: #007BFF;
         }
-        .chatbar {
-            margin-top: auto;
-            background-color: var(--input-background-color);
-            padding: 10px;
-            border-top: 1px solid var(--input-border-color);
-            margin: 0 20.6% 0 19.9%;
-        }
-        .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 50px;
-            background-color: var(--background-color);
-            padding: 10px;
-            border-top: 1px solid var(--input-border-color);
-            text-align: center;
-            font-size: 12px;
-        }
+        /* .scroll {
+            overflow-y: scroll;
+            height: 100%;
+        } */
         .timestamp {
             font-size: 80%;
             color: var(--content-color);

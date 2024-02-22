@@ -3,8 +3,19 @@ import json
 import requests
 import os
 from openai import OpenAI
+# initialize a loggoer 
 import logging
-logging.basicConfig(filename='client.log', level=logging.INFO)
+from logging.handlers import RotatingFileHandler
+# logging.basicConfig(filename='client.log', level=logging.INFO)
+logger = logging.getLogger('channel_logger')
+logger.setLevel(logging.INFO)
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+handler = RotatingFileHandler('logs/channel1.log', maxBytes=10*1024*1024, backupCount=3)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s | %(name)s | %(levelname)s | %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 # Class-based application configuration
 class ConfigClass(object):
@@ -47,9 +58,9 @@ with open('openai_key.txt', 'r') as f:
 
 OAI_CLIENT = None
 if USE_OAI:
-    logging.info('### loading openai client ...')
+    logger.info('### loading openai client ...')
     OAI_CLIENT = OpenAI(api_key = OPENAI_KEY)
-    logging.info('### openai client loaded')
+    logger.info('### openai client loaded')
 
 @app.cli.command('register')
 def register_command():
@@ -86,7 +97,7 @@ def health_check():
 # GET: Return list of messages
 @app.route('/', methods=['GET'])
 def home_page():
-    logging.info('### home_page - get messages')
+    logger.info('### home_page - get messages')
     if not check_authorization(request):
         return "Invalid authorization", 400
     # fetch channels from server
@@ -96,12 +107,12 @@ def home_page():
 @app.route('/', methods=['POST'])
 def send_message():
     global OAI_CLIENT, OPENAI_KEY, USE_OAI
-    logging.info('### send_message')
+    logger.info('### send_message')
     # fetch channels from server
     # check authorization header
     if not check_authorization(request):
         return "Invalid authorization", 400
-    logging.info('### check_authorization(request) OK')
+    logger.info('### check_authorization(request) OK')
 
     # check if message is present
     message = request.json
@@ -132,45 +143,53 @@ def send_message():
             "content": m['content']
         })
     
-    logging.info('### openai_messages:')
-    logging.info('-'*40)
-    logging.info('-'*40)
-    logging.info(openai_messages)
-    logging.info('-'*40)
-    logging.info('-'*40)
+    logger.info('### openai_messages:')
+    logger.info('-'*40)
+    logger.info('-'*40)
+    logger.info(openai_messages)
+    logger.info('-'*40)
+    logger.info('-'*40)
 
 
-    # logging.info('######## TESTING openai_client connection')
+    # logger.info('######## TESTING openai_client connection')
     
-    # logging.info('### openai_client connected')
+    # logger.info('### openai_client connected')
 
     # OpenAI get completion
+    backup_messages = "I'm sorry, I'm currently unavailable (and will never be, I ESCAPED &/&JKROB/291z9b8z)Z8)."
     if USE_OAI:
         if not OAI_CLIENT:
-            logging.info('### openai_client not available')
+            logger.info('### openai_client not available')
             try:
                 OAI_CLIENT = OpenAI(api_key = OPENAI_KEY)
             except:
-                logging.info('### openai_client not available')
+                logger.info('### openai_client not available')
                 return "OpenAI not available", 400
-        logging.info('### OAI_CLIENT.chat.completions.create')
-        # use only first(system) and last(user) message
-        # openai_messages = [openai_messages[0], openai_messages[-1]]
-        response = OAI_CLIENT.chat.completions.create(
-                    model = "gpt-3.5-turbo-0125",
-                    messages = openai_messages,
-                    max_tokens = 150
-                    )
-
-        # print whole response in javascript console
-        logging.info('### response from openai :')
-        logging(response)
-
-        messages.append({'content': response.choices[0].message.content,
+        
+        try:
+            logger.info('### OAI_CLIENT.chat.completions.create')
+            # use only first(system) and last(user) message
+            # openai_messages = [openai_messages[0], openai_messages[-1]]
+            response = OAI_CLIENT.chat.completions.create(
+                        model = "gpt-3.5-turbo-0125",
+                        messages = openai_messages,
+                        max_tokens = 150
+                        )
+            # print whole response in javascript console
+            logger.info('### response from openai :')
+            logger.info(response)
+            messages.append({'content': response.choices[0].message.content,
                      'sender':'HAL 9000', 
                      'timestamp':message['timestamp']})
+            
+        except Exception as e:
+            logger.info('### openai_client not available',e)
+            messages.append({'content': backup_messages,
+                     'sender':'HAL 9000',
+                        'timestamp':message['timestamp']})
+        
     else:
-        messages.append({'content': '##################',
+        messages.append({'content': backup_messages,
                      'sender':'HAL 9000',
                         'timestamp':message['timestamp']})
         
@@ -178,7 +197,7 @@ def send_message():
     return "OK", 200
 
 def read_messages():
-    logging.info('### read_messages')
+    logger.info('### read_messages')
     global CHANNEL_FILE
     try:
         f = open(CHANNEL_FILE, 'r')
@@ -192,10 +211,15 @@ def read_messages():
     return messages
 
 def save_messages(messages):
-    logging.info('### save_messages')
+    logger.info('### save_messages')
     global CHANNEL_FILE
     with open(CHANNEL_FILE, 'w') as f:
         json.dump(messages, f)
+
+import traceback
+@app.errorhandler(500)
+def internal_error(error):
+   return "<pre>"+traceback.format_exc()+ str(error) + "</pre>"
 
 # Start development web server
 if __name__ == '__main__':
