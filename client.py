@@ -6,7 +6,6 @@ import datetime
 # initialize a loggoer to log to a file
 import logging
 logging.basicConfig(filename='client.log', level=logging.INFO)
-logging.info('This message should go to the log file')
 
 app = Flask(__name__)
 
@@ -26,15 +25,16 @@ LAST_CHANNEL_UPDATE = None
 
 
 def update_channels():
-    print("#### update_channels")
+    logging.info("#### update_channels")
     global CHANNELS, LAST_CHANNEL_UPDATE
     if CHANNELS and LAST_CHANNEL_UPDATE and (datetime.datetime.now() - LAST_CHANNEL_UPDATE).seconds < 60:
         return CHANNELS
     # fetch list of channels from server
-    print("#### update_channels: fetching")
-    print(HUB_URL + '/channels')
+    logging.info("#### update_channels: fetching")
+    logging.info(HUB_URL + '/channels')
     response = requests.get(HUB_URL + '/channels', headers={'Authorization': 'authkey ' + HUB_AUTHKEY})
-    print('#### response:', response)
+    logging.info('#### response:', response)
+    logging.info('#### response:', response.text)
     if response.status_code != 200:
         return "Error fetching channels: "+str(response.text), 400
     channels_response = response.json()
@@ -54,18 +54,28 @@ def home_page():
 @app.route('/show')
 def show_channel():
     # fetch list of messages from channel
+    logging.info('#### show_channel')
     show_channel = request.args.get('channel', None)
+    logging.info('#### show_channel: '+str(show_channel))
+
     if not show_channel:
-        return "No channel specified", 400
+        logging.info('#### show_channel: No channel specified')
+        return "No channel specified", 400  
     channel = None
     for c in update_channels():
         if c['endpoint'] == urllib.parse.unquote(show_channel):
             channel = c
             break
     if not channel:
+        logging.info('#### show_channel: Channel not found')
         return "Channel not found", 404
+    logging.info('#### show_channel: '+str(channel['endpoint']))
+    logging.info('#### show_channel: '+str(channel['authkey']))
     response = requests.get(channel['endpoint'], headers={'Authorization': 'authkey ' + channel['authkey']})
+    logging.info('#### response: '+str(response))
+    # logging.info('#### response.text: '+str(response.text))
     if response.status_code != 200:
+        logging.info('#### show_channel: Error fetching messages: '+str(response.text))
         return "Error fetching messages: "+str(response.text), 400
     messages = response.json()
     return render_template("channel.html", channel=channel, messages=messages)

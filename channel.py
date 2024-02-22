@@ -5,7 +5,6 @@ import os
 from openai import OpenAI
 import logging
 logging.basicConfig(filename='client.log', level=logging.INFO)
-logging.info('This message should go to the log file')
 
 # Class-based application configuration
 class ConfigClass(object):
@@ -20,6 +19,7 @@ app.config.from_object(__name__ + '.ConfigClass')  # configuration
 app.app_context().push()  # create an app context before initializing db
 
 DEV = False 
+USE_OAI = True
 
 if DEV:
     HUB_URL = 'http://localhost:5555'
@@ -43,11 +43,13 @@ CHANNEL_FILE = 'messages.json'
 # OpenAI
 # load openai key from file
 with open('openai_key.txt', 'r') as f:
-    openai_key = f.read().strip()
+    OPENAI_KEY = f.read().strip()
 
-logging.info('### loading openai client ...')
-oai_client = OpenAI(api_key = openai_key)
-logging.info('### openai client loaded')
+OAI_CLIENT = None
+if USE_OAI:
+    logging.info('### loading openai client ...')
+    OAI_CLIENT = OpenAI(api_key = OPENAI_KEY)
+    logging.info('### openai client loaded')
 
 @app.cli.command('register')
 def register_command():
@@ -93,6 +95,7 @@ def home_page():
 # POST: Send a message
 @app.route('/', methods=['POST'])
 def send_message():
+    global OAI_CLIENT, OPENAI_KEY, USE_OAI
     logging.info('### send_message')
     # fetch channels from server
     # check authorization header
@@ -141,21 +144,36 @@ def send_message():
     
     # logging.info('### openai_client connected')
 
-    logging.info('### openai_client.chat.completions.create')
     # OpenAI get completion
-    response = oai_client.chat.completions.create(
-        model = "gpt-3.5-turbo-0125",
-        messages = openai_messages,
-        max_tokens = 1500
-    )
+    if USE_OAI:
+        if not OAI_CLIENT:
+            logging.info('### openai_client not available')
+            try:
+                OAI_CLIENT = OpenAI(api_key = OPENAI_KEY)
+            except:
+                logging.info('### openai_client not available')
+                return "OpenAI not available", 400
+        logging.info('### OAI_CLIENT.chat.completions.create')
+        # use only first(system) and last(user) message
+        # openai_messages = [openai_messages[0], openai_messages[-1]]
+        response = OAI_CLIENT.chat.completions.create(
+                    model = "gpt-3.5-turbo-0125",
+                    messages = openai_messages,
+                    max_tokens = 150
+                    )
 
-    # print whole response in javascript console
-    logging.info('### response from openai :')
-    logging(response)
+        # print whole response in javascript console
+        logging.info('### response from openai :')
+        logging(response)
 
-    messages.append({'content': response.choices[0].message.content,
+        messages.append({'content': response.choices[0].message.content,
                      'sender':'HAL 9000', 
                      'timestamp':message['timestamp']})
+    else:
+        messages.append({'content': '##################',
+                     'sender':'HAL 9000',
+                        'timestamp':message['timestamp']})
+        
     save_messages(messages)
     return "OK", 200
 
